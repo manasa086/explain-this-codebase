@@ -7,7 +7,9 @@ An AI-powered tool that clones a codebase, parses it into a dependency/call grap
 - **Frontend:** React, TypeScript, Apollo Client, react-flow (coming in a later phase)
 
 ## Status
-Phase 1 (backend skeleton) complete: `analyzeRepo` mutation clones a repo and lists its files via GraphQL. No AST parsing / graph building yet — that's Phase 2.
+- Phase 1: backend skeleton — `analyzeRepo` mutation clones a repo and lists its files via GraphQL. Done.
+- Phase 2: static analysis engine — AST parsing (imports, functions, classes, calls), a networkx dependency/call graph with cross-file resolution, and SQLite persistence. `analyzeRepo` now also returns graph stats. Done.
+- Phase 3 (next): full GraphQL API over the graph — per-node queries, search, blast-radius.
 
 ## Running locally
 ```bash
@@ -24,10 +26,18 @@ Example mutation:
 ```graphql
 mutation {
   analyzeRepo(url: "https://github.com/octocat/Hello-World.git") {
+    id
     url
     status
     files {
       path
+    }
+    stats {
+      numNodes
+      numEdges
+      numFiles
+      numFunctions
+      numClasses
     }
   }
 }

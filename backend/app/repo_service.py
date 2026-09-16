@@ -9,14 +9,14 @@ SCRATCH_DIR = Path(__file__).resolve().parent.parent / ".scratch" / "repos"
 DEFAULT_IGNORED_DIRS = {".git", "node_modules", "venv", ".venv", "__pycache__", ".scratch"}
 
 
-def _repo_slug(url: str) -> str:
+def repo_slug(url: str) -> str:
     return hashlib.sha1(url.encode("utf-8")).hexdigest()[:16]
 
 
 def clone_repo(url: str) -> Path:
     """Clone (or reuse an existing clone of) a repo URL into the scratch dir."""
     SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
-    dest = SCRATCH_DIR / _repo_slug(url)
+    dest = SCRATCH_DIR / repo_slug(url)
 
     if dest.exists():
         shutil.rmtree(dest)
