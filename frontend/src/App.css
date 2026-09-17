@@ -1,0 +1,108 @@
+.app {
+  max-width: 640px;
+  margin: 48px auto;
+  padding: 0 16px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #1a1a1a;
+}
+
+h1 {
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  color: #666;
+  margin-top: 0;
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  margin: 24px 0;
+}
+
+.input-row input {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.input-row button {
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #1a1a1a;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.input-row button:disabled {
+  background: #999;
+  cursor: default;
+}
+
+.error {
+  color: #c0392b;
+}
+
+.panel {
+  margin-top: 24px;
+  padding: 16px 20px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fafafa;
+}
+
+.panel h3 {
+  margin-top: 0;
+}
+
+.log {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 14px;
+}
+
+.log li {
+  padding: 4px 0;
+}
+
+.log .stage-done {
+  color: #1e8e3e;
+}
+
+.log .stage-error {
+  color: #c0392b;
+}
+
+.log .pending {
+  color: #999;
+  font-style: italic;
+}
+
+.stats-grid {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.stats-grid > div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+}
