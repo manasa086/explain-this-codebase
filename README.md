@@ -9,7 +9,37 @@ An AI-powered tool that clones a codebase, parses it into a dependency/call grap
 ## Status
 - Phase 1: backend skeleton — `analyzeRepo` mutation clones a repo and lists its files via GraphQL. Done.
 - Phase 2: static analysis engine — AST parsing (imports, functions, classes, calls), a networkx dependency/call graph with cross-file resolution, and SQLite persistence. `analyzeRepo` now also returns graph stats. Done.
-- Phase 3 (next): full GraphQL API over the graph — per-node queries, search, blast-radius.
+- Phase 3: full GraphQL API over the persisted graph — `repo(id)`, `node(repoId, nodeId)` with relationship fields (`calls`, `calledBy`, `imports`, `importedBy`, `defines`, `inheritsFrom`), `searchNodes`, and `blastRadius` (reverse-dependency BFS to N hops). Done.
+- Phase 4 (next): progress streaming via GraphQL subscriptions.
+
+## Example queries
+
+Search for a node, then inspect its relationships:
+```graphql
+query {
+  searchNodes(repoId: "<repoId>", query: "clone_repo") {
+    id
+    nodeType
+    name
+    path
+  }
+}
+
+query {
+  node(repoId: "<repoId>", nodeId: "function:backend/app/repo_service.py::clone_repo") {
+    name
+    calls { name }
+    calledBy { name path }
+  }
+}
+
+query {
+  blastRadius(repoId: "<repoId>", nodeId: "function:backend/app/repo_service.py::repo_slug", depth: 2) {
+    name
+    path
+  }
+}
+```
 
 ## Running locally
 ```bash
