@@ -1,3 +1,6 @@
+import asyncio
+from typing import AsyncGenerator
+
 import strawberry
 
 from app.db import (
@@ -12,6 +15,7 @@ from app.db import (
     search_nodes as db_search_nodes,
 )
 from app.graph_builder import build_graph
+from app.progress import ProgressEvent, broker
 from app.repo_service import clone_repo, list_files, repo_slug
 
 
@@ -133,18 +137,58 @@ class Query:
 
 
 @strawberry.type
+class AnalysisStarted:
+    repo_id: str
+    status: str
+
+
+async def _run_analysis(url: str, repo_id: str) -> None:
+    try:
+        await broker.publish(repo_id, ProgressEvent(stage="cloning", message=f"Cloning {url}"))
+        local_path = await asyncio.to_thread(clone_repo, url)
+
+        await broker.publish(repo_id, ProgressEvent(stage="parsing", message="Parsing files and building graph"))
+        graph = await asyncio.to_thread(build_graph, local_path)
+        files = await asyncio.to_thread(list_files, local_path)
+
+        await broker.publish(repo_id, ProgressEvent(stage="saving", message="Persisting graph to storage"))
+        await asyncio.to_thread(save_graph, repo_id, url, graph)
+        await asyncio.to_thread(save_files, repo_id, files)
+
+        await broker.publish(repo_id, ProgressEvent(stage="done", message="Analysis complete"))
+    except Exception as exc:
+        await broker.publish(repo_id, ProgressEvent(stage="error", message=str(exc)))
+
+
+@strawberry.type
 class Mutation:
     @strawberry.mutation
-    def analyze_repo(self, url: str) -> Repo:
-        local_path = clone_repo(url)
-        files = list_files(local_path)
-
-        graph = build_graph(local_path)
+    def analyze_repo(self, url: str) -> AnalysisStarted:
         repo_id = repo_slug(url)
-        save_graph(repo_id, url, graph)
-        save_files(repo_id, files)
-
-        return _build_repo(repo_id)
+        asyncio.create_task(_run_analysis(url, repo_id))
+        return AnalysisStarted(repo_id=repo_id, status="started")
 
 
-schema = strawberry.Schema(query=Query, mutation=Mutation)
+@strawberry.type
+class AnalysisProgress:
+    repo_id: str
+    stage: str
+    message: str
+
+
+@strawberry.type
+class Subscription:
+    @strawberry.subscription
+    async def analysis_progress(self, repo_id: str) -> AsyncGenerator[AnalysisProgress, None]:
+        queue = broker.subscribe(repo_id)
+        try:
+            while True:
+                event = await queue.get()
+                yield AnalysisProgress(repo_id=repo_id, stage=event.stage, message=event.message)
+                if event.stage in ("done", "error"):
+                    break
+        finally:
+            broker.unsubscribe(repo_id, queue)
+
+
+schema = strawberry.Schema(query=Query, mutation=Mutation, subscription=Subscription)
