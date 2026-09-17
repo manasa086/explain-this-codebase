@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { gql } from '@apollo/client'
 import { useMutation, useSubscription, useLazyQuery } from '@apollo/client/react'
+import { GraphView } from './GraphView'
 import './App.css'
 
 const ANALYZE_REPO = gql`
@@ -139,6 +140,8 @@ function App() {
           </div>
         </div>
       )}
+
+      {finished && repoId && <GraphView repoId={repoId} />}
     </div>
   )
 }

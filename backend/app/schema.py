@@ -5,6 +5,8 @@ import strawberry
 
 from app.db import (
     blast_radius as db_blast_radius,
+    get_all_edges,
+    get_all_nodes,
     get_files,
     get_node as db_get_node,
     get_related,
@@ -89,6 +91,19 @@ def _to_nodes(rows: list[dict], repo_id: str) -> list[Node]:
 
 
 @strawberry.type
+class Edge:
+    source: str
+    target: str
+    edge_type: str
+
+
+@strawberry.type
+class GraphData:
+    nodes: list[Node]
+    edges: list[Edge]
+
+
+@strawberry.type
 class Repo:
     id: str
     url: str
@@ -134,6 +149,15 @@ class Query:
     @strawberry.field
     def blast_radius(self, repo_id: str, node_id: str, depth: int = 2) -> list[Node]:
         return _to_nodes(db_blast_radius(repo_id, node_id, depth), repo_id)
+
+    @strawberry.field
+    def graph(self, repo_id: str) -> GraphData:
+        nodes = _to_nodes(get_all_nodes(repo_id), repo_id)
+        edges = [
+            Edge(source=e["source"], target=e["target"], edge_type=e["edge_type"])
+            for e in get_all_edges(repo_id)
+        ]
+        return GraphData(nodes=nodes, edges=edges)
 
 
 @strawberry.type

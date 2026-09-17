@@ -4,7 +4,7 @@ An AI-powered tool that clones a codebase, parses it into a dependency/call grap
 
 ## Stack
 - **Backend:** Python, FastAPI, Strawberry GraphQL, GitPython, networkx, SQLite
-- **Frontend:** React, TypeScript, Vite, Apollo Client (react-flow graph visualization coming in a later phase)
+- **Frontend:** React, TypeScript, Vite, Apollo Client, @xyflow/react (graph visualization)
 
 ## Status
 - Phase 1: backend skeleton — `analyzeRepo` mutation clones a repo and lists its files via GraphQL. Done.
@@ -12,7 +12,8 @@ An AI-powered tool that clones a codebase, parses it into a dependency/call grap
 - Phase 3: full GraphQL API over the persisted graph — `repo(id)`, `node(repoId, nodeId)` with relationship fields (`calls`, `calledBy`, `imports`, `importedBy`, `defines`, `inheritsFrom`), `searchNodes`, and `blastRadius` (reverse-dependency BFS to N hops). Done.
 - Phase 4: progress streaming — `analyzeRepo` now kicks off cloning/parsing/saving in the background and returns immediately with a `repoId`; an `analysisProgress(repoId)` GraphQL subscription streams `cloning → parsing → saving → done` over WebSocket. Done.
 - Phase 5: React frontend shell — repo URL input, Apollo Client (split HTTP/WebSocket link), live progress log wired to the subscription, and graph stats displayed once analysis completes. Done.
-- Phase 6 (next): interactive graph visualization (react-flow) and a node detail panel.
+- Phase 6: interactive graph visualization — a new `graph(repoId)` query returns the full node/edge set, rendered with @xyflow/react. Starts collapsed at file level (with function-level `CALLS`/`INHERITS` edges aggregated up to their containing files); clicking a file expands it to show its functions/classes; clicking a function/class opens a detail panel with its `calls`/`calledBy`. Done.
+- Phase 7 (next): LLM-based summarization layer (per-file/function plain-English summaries, content-hash cached).
 
 ## Running locally
 

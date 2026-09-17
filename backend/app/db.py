@@ -143,6 +143,25 @@ def _row_to_node(row) -> dict:
     }
 
 
+def get_all_nodes(repo_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT node_id, type, name, path, start_line, end_line FROM nodes WHERE repo_id = ?",
+        (repo_id,),
+    ).fetchall()
+    conn.close()
+    return [_row_to_node(r) for r in rows]
+
+
+def get_all_edges(repo_id: str) -> list[dict]:
+    conn = get_connection()
+    rows = conn.execute(
+        "SELECT source, target, type FROM edges WHERE repo_id = ?", (repo_id,)
+    ).fetchall()
+    conn.close()
+    return [{"source": r[0], "target": r[1], "edge_type": r[2]} for r in rows]
+
+
 def get_node(repo_id: str, node_id: str) -> dict | None:
     conn = get_connection()
     row = conn.execute(
