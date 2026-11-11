@@ -37,6 +37,14 @@ CREATE TABLE IF NOT EXISTS repo_files (
     PRIMARY KEY (repo_id, path)
 );
 
+CREATE TABLE IF NOT EXISTS summaries (
+    content_hash TEXT NOT NULL,
+    model TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (content_hash, model)
+);
+
 CREATE INDEX IF NOT EXISTS idx_edges_repo_source ON edges(repo_id, source);
 CREATE INDEX IF NOT EXISTS idx_edges_repo_target ON edges(repo_id, target);
 CREATE INDEX IF NOT EXISTS idx_nodes_repo_type ON nodes(repo_id, type);
@@ -240,3 +248,24 @@ def blast_radius(repo_id: str, node_id: str, depth: int) -> list[dict]:
 
     visited.discard(node_id)
     return get_nodes_by_ids(repo_id, list(visited))
+
+
+def get_summary(content_hash: str, model: str) -> str | None:
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT summary FROM summaries WHERE content_hash = ? AND model = ?",
+        (content_hash, model),
+    ).fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def save_summary(content_hash: str, model: str, summary: str) -> None:
+    conn = get_connection()
+    with conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO summaries (content_hash, model, summary, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (content_hash, model, summary, datetime.datetime.utcnow().isoformat()),
+        )
+    conn.close()

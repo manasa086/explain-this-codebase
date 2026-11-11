@@ -17,6 +17,7 @@ from app.db import (
     search_nodes as db_search_nodes,
 )
 from app.graph_builder import build_graph
+from app.summarizer import SummarizerError, cached_summary, summarize_node as run_summarize
 from app.progress import ProgressEvent, broker
 from app.repo_service import clone_repo, list_files, repo_slug
 
@@ -33,6 +34,13 @@ class RepoStats:
     num_files: int
     num_functions: int
     num_classes: int
+
+
+@strawberry.type
+class Summary:
+    text: str
+    cached: bool
+    model: str
 
 
 @strawberry.type
@@ -72,6 +80,12 @@ class Node:
     @strawberry.field
     def blast_radius(self, depth: int = 2) -> list["Node"]:
         return _to_nodes(db_blast_radius(self.repo_id, self.id, depth), self.repo_id)
+
+    @strawberry.field
+    def summary(self) -> Summary | None:
+        """Cached summary only; never triggers an LLM call. Use summarizeNode to generate."""
+        result = cached_summary(self.repo_id, self.id)
+        return Summary(text=result.summary, cached=True, model=result.model) if result else None
 
 
 def _to_node(data: dict, repo_id: str) -> Node:
@@ -191,6 +205,14 @@ class Mutation:
         repo_id = repo_slug(url)
         asyncio.create_task(_run_analysis(url, repo_id))
         return AnalysisStarted(repo_id=repo_id, status="started")
+
+    @strawberry.mutation
+    async def summarize_node(self, repo_id: str, node_id: str) -> Summary:
+        try:
+            result = await asyncio.to_thread(run_summarize, repo_id, node_id)
+        except SummarizerError as exc:
+            raise Exception(str(exc)) from exc
+        return Summary(text=result.summary, cached=result.cached, model=result.model)
 
 
 @strawberry.type

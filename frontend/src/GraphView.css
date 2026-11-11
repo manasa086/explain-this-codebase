@@ -57,3 +57,18 @@
   list-style: none;
   margin-left: -18px;
 }
+
+.node-detail .summary {
+  margin: 12px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.node-detail .summary p {
+  margin: 0;
+}
+
+.node-detail .summary .muted {
+  color: #999;
+  font-size: 12px;
+}

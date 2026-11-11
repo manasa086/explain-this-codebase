@@ -48,10 +48,10 @@ function App() {
   const [finished, setFinished] = useState(false)
 
   const [analyzeRepo, { loading: starting, error: mutationError }] =
-    useMutation(ANALYZE_REPO)
-  const [fetchRepo, { data: repoData }] = useLazyQuery(REPO_QUERY)
+    useMutation<{ analyzeRepo: { repoId: string; status: string } }>(ANALYZE_REPO)
+  const [fetchRepo, { data: repoData }] = useLazyQuery<{ repo: { stats: Record<string, number> } | null }>(REPO_QUERY)
 
-  useSubscription(ANALYSIS_PROGRESS, {
+  useSubscription<{ analysisProgress: ProgressEvent }>(ANALYSIS_PROGRESS, {
     variables: repoId ? { repoId } : undefined,
     skip: !repoId || finished,
     onData: ({ data }) => {

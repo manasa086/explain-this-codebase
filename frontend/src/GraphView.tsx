@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { gql } from '@apollo/client'
-import { useLazyQuery, useQuery } from '@apollo/client/react'
+import { useLazyQuery, useMutation, useQuery } from '@apollo/client/react'
 import {
   ReactFlow,
   Background,
@@ -47,12 +47,34 @@ const NODE_DETAIL_QUERY = gql`
         id
         name
       }
+      summary {
+        text
+        cached
+      }
+    }
+  }
+`
+
+const SUMMARIZE_NODE = gql`
+  mutation SummarizeNode($repoId: String!, $nodeId: String!) {
+    summarizeNode(repoId: $repoId, nodeId: $nodeId) {
+      text
+      cached
+      model
     }
   }
 `
 
 type GNode = { id: string; nodeType: string; name: string; path: string | null }
 type GEdge = { source: string; target: string; edgeType: string }
+type Summary = { text: string; cached: boolean; model?: string }
+type NodeDetail = GNode & {
+  startLine: number | null
+  endLine: number | null
+  calls: GNode[]
+  calledBy: GNode[]
+  summary: Summary | null
+}
 
 const NODE_COLORS: Record<string, string> = {
   File: '#2563eb',
@@ -159,10 +181,12 @@ function layout(nodes: GNode[], edges: GEdge[], expanded: Set<string>) {
 }
 
 export function GraphView({ repoId }: { repoId: string }) {
-  const { data, loading, error } = useQuery(GRAPH_QUERY, { variables: { repoId } })
+  const { data, loading, error } = useQuery<{ graph: { nodes: GNode[]; edges: GEdge[] } }>(GRAPH_QUERY, { variables: { repoId } })
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [fetchDetail, { data: detailData }] = useLazyQuery(NODE_DETAIL_QUERY)
+  const [fetchDetail, { data: detailData }] = useLazyQuery<{ node: NodeDetail | null }>(NODE_DETAIL_QUERY)
+  const [summarize, { data: summaryData, loading: summarizing, error: summaryError, reset: resetSummary }] =
+    useMutation<{ summarizeNode: Summary }>(SUMMARIZE_NODE)
 
   const nodes: GNode[] = data?.graph?.nodes ?? []
   const edges: GEdge[] = data?.graph?.edges ?? []
@@ -176,6 +200,9 @@ export function GraphView({ repoId }: { repoId: string }) {
     (_event: React.MouseEvent, node: FlowNode) => {
       const gnode = nodes.find((n) => n.id === node.id)
       if (!gnode) return
+      setSelectedId(node.id)
+      resetSummary()
+      fetchDetail({ variables: { repoId, nodeId: node.id } })
       if (gnode.nodeType === 'File') {
         setExpanded((prev) => {
           const next = new Set(prev)
@@ -183,25 +210,23 @@ export function GraphView({ repoId }: { repoId: string }) {
           else next.add(node.id)
           return next
         })
-      } else {
-        setSelectedId(node.id)
-        fetchDetail({ variables: { repoId, nodeId: node.id } })
       }
     },
-    [nodes, repoId, fetchDetail],
+    [nodes, repoId, fetchDetail, resetSummary],
   )
 
   if (loading) return <p>Loading graph…</p>
   if (error) return <p className="error">{error.message}</p>
 
   const detail = detailData?.node
+  const summary = summaryData?.summarizeNode ?? detail?.summary
 
   return (
     <div className="graph-panel">
       <h3>Dependency graph</h3>
       <p className="hint">
-        Click a file to expand/collapse it. Click a function or class to
-        inspect its relationships.
+        Click a file to expand/collapse it and inspect it. Click a function or
+        class to inspect its relationships. Use “Explain this” for an AI summary.
       </p>
       <div className="graph-canvas">
         <ReactFlow nodes={flowNodes} edges={flowEdges} onNodeClick={onNodeClick} fitView>
@@ -219,6 +244,22 @@ export function GraphView({ repoId }: { repoId: string }) {
             {detail.path}
             {detail.startLine ? `:${detail.startLine}-${detail.endLine}` : ''}
           </p>
+          <div className="summary">
+            {summary ? (
+              <p>
+                {summary.text}
+                {summary.cached && <span className="muted"> (cached)</span>}
+              </p>
+            ) : (
+              <button
+                disabled={summarizing}
+                onClick={() => summarize({ variables: { repoId, nodeId: detail.id } })}
+              >
+                {summarizing ? 'Explaining…' : 'Explain this'}
+              </button>
+            )}
+            {summaryError && <p className="error">{summaryError.message}</p>}
+          </div>
           <div className="detail-columns">
             <div>
               <strong>Calls</strong>
